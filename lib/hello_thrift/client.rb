@@ -2,20 +2,32 @@ require_relative 'hello_service/hello_service'
 
 module HelloThrift
 
-  class Client
-    attr_reader :client
+  class Client    
 
     def initialize(options={})
       port = options[:port] || 9090
-      transport = Thrift::BufferedTransport.new(Thrift::Socket.new('localhost', port))
-      protocol = Thrift::BinaryProtocol.new(transport)
+      @transport = Thrift::BufferedTransport.new(Thrift::Socket.new('localhost', port))
+      protocol = Thrift::BinaryProtocol.new(@transport)
       @client = HelloService::Client.new(protocol)
-      transport.open
     end
 
     def say_hello(name)
-      client.say_hello(name)
+      safe_transport do
+        @client.say_hello(name)
+      end
     end
+
+    private
+
+    def safe_transport
+      begin
+        @transport.open
+        return yield
+      ensure
+        @transport.close
+      end
+    end
+
   end
 
 end
